@@ -2,7 +2,7 @@
 #
 # Simple bash script to interact with redshift
 # and adjust screen colors and brightness.
-# 
+#
 # Requires setting the "LAT_LONG" var in file.
 #
 # usage: redshift-control {option} [--nocolor]
@@ -40,7 +40,7 @@ RUNNING="$(ps aux | grep -w redshift | grep -v redshift-control | wc -l)"
 # set functions #
 
 function help {
-    head -n 14 "$0" | tail -n 8 | sed 's/# //'; }
+    head -n 15 "$0" | tail -n 8 | sed 's/# //'; }
 
 function brightness_up {
     b="$BRIGHTNESS"

@@ -4,8 +4,6 @@ redshift-control
 Simple bash script to interact with **redshift**
 and adjust screen colors and brightness.
 
-Requires setting the `COORDINATES` var in file.
-
 ```
 usage: redshift-control {option} [--nocolor]
 
@@ -18,4 +16,4 @@ options:
   force   instant night colors
 ```
 
-Tested with [redshift v1.12](https://github.com/jonls/redshift/releases/tag/v1.12).
+Tested with [redshift v1.12](https://github.com/jonls/redshift/releases/tag/v1.12) (Ubuntu 20.04).

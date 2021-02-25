@@ -1,117 +1,115 @@
 #!/usr/bin/env bash
 #
 # Simple bash script to interact with redshift
-# and adjust screen colors and brightness.
+# And adjust screen colors and brightness.
 #
-# Requires setting the "COORDINATES" var in file.
+# Usage:
+#   redshift-control MAIN [--nocolor]
 #
-# usage: redshift-control {option} [--nocolor]
-#
-# options:
-#   start   set automatic settings
-#   pause   interrupt or activate redshift
-#   stop    reset brightness and colors
-#   up      brighten monitor screens
-#   down    dim monitor screens
-#   force   instant night colors
+# Main arguments:
+#   start      set automatic settings
+#   pause      interrupt or activate redshift
+#   stop       reset brightness and colors
+#   up         brighten monitor screens
+#   down       dim monitor screens
+#   force      instant night colors
 
-# required
-COORDINATES=''     # location 'lat:long' (eg '-10.2:-40.4')
+# Brightness (10 equals to 100%)
+BRIGHTNESS='10'
 
-# user options
-BRIGHTNESS='10'    # brightness (10 equals to 100%)
-DAYTEMP='6500'     # temperature (6500 day - 4500 night)
-FORCETEMP='3600'   # force temperature value (optional)
+# Temperature (6500 day - 4500 night)
+DAYTEMP='6500'
 
-# main argument to execute
+# Force temperature value (optional)
+FORCETEMP='3600'
+
+# Main argument to execute
 ARG="$(echo "$1" | sed s:-::g)"
 
-# optional; sets brightness without touching colors
-[[ "$2" = '--nocolor' ]] && NOCOLOR=true || NOCOLOR=false
+# Optional; sets brightness without touching colors
+[[ "$@" =~ '--nocolor' ]] &&
+NOCOLOR=true || NOCOLOR=false
 
-# cache path to store var
+# Cache path to store var
 CONF="/home/$USER/.cache/redshift_control"
+[[ -f "$CONF" ]] && COORDINATES="$(cat $CONF | cut -f1 -d,)"
 
-# check location
-[[ "$COORDINATES" = "" ]] &&
-echo "Error: missing user configuration (COORDINATES)." &&
-exit 2
+# Ask for coordinates
+[[ $COORDINATES = "" ]] &&
+printf "Please enter your location provider or coordinates (e.g. 'lat:long'):\n> " &&
+read COORDINATES && [[ $COORDINATES != "" ]] &&
+printf "Got location coordinates: '${COORDINATES}'.\n\nWrite coordinates to file and don't ask again? [Y/n]\n> " &&
+read WRITETOFILE && [[ ${WRITETOFILE,,} = "y" ]] &&
+echo "${COORDINATES},${BRIGHTNESS}" > "$CONF"
 
-# check running processes]]
+# Check running processes
 RUNNING="$(ps aux | grep -w redshift | grep -v redshift-control | wc -l)"
 [[ $(( "$RUNNING" > "1" )) = 1 ]] && RUNNING=true || RUNNING=false
 
-# set functions
-
 function help {
-    head -n 16 "$0" | tail -n 9 | sed '2d;s/# //'; }
+    head -n 15 "$0" | tail -n 10 | sed 's/# //;s/#//'; }
 
 function brightness_up {
     b="$BRIGHTNESS"
-    # read brightness value from cache
-    [ -f "$CONF" ] && b="$(cat $CONF)"
+    # Read brightness value from cache
+    [ -f "$CONF" ] && b="$(cat $CONF | cut -f2 -d,)"
     [[ $b = 10 ]] && exit 0
-    # set min/max brightness value
+    # Set min/max brightness value
     [[ $(( "$b" > "10" )) = 1 ]] && b='10'
     [[ $(( "$b" < "1" )) = 1 ]] && b='1'
-    # level brightness up and save to cache
-    b=$(( $b + 1 )); echo "$b" > "$CONF"
-    # check value and convert to input format
+    # Level brightness up and save to cache
+    b=$(( $b + 1 )); echo "${COORDINATES},${b}" > "$CONF"
+    # Check value and convert to input format
     [[ $(( "$b" > "9" )) = 1 ]] && b="1.0" || b="0.${b:0:1}"
-    # execute redshift and adjust brightness
+    # Execute redshift and adjust brightness
     [[ "$NOCOLOR" = "true" ]] &&
-    redshift -l $COORDINATES -b $b -o -O $DAYTEMP -P
+    redshift -l "$COORDINATES" -b $b -o -O $DAYTEMP -P
     [[ "$NOCOLOR" = "false" ]] &&
-    redshift -l $COORDINATES -b $b -o -P; }
+    redshift -l "$COORDINATES" -b $b -o -P; }
 
 function brightness_down {
     b="$BRIGHTNESS"
-    # read brightness value from cache
-    [ -f "$CONF" ] && b="$(cat $CONF)"
-    [[ $b = 1 ]] && exit 0
-    # set min/max brightness value
+    # Read brightness value from cache
+    [ -f "$CONF" ] && b="$(cat $CONF | cut -f2 -d,)"
+    #[[ $b = 1 ]] && exit 0
+    # Set min/max brightness value
     [[ $(( "$b" > "10" )) = 1 ]] && b='10'
     [[ $(( "$b" < "1" )) = 1 ]] && b='1'
-    # level brightness up and save to cache
-    b=$(( $b - 1 )); echo "$b" > "$CONF"
-    # check value and convert to input format
+    # Level brightness up and save to cache
+    b=$(( $b - 1 )); echo "${COORDINATES},${b}" > "$CONF"
+    # Check value and convert to input format
     [[ $(( "$b" > "9" )) = 1 ]] && b="1.0" || b="0.${b:0:1}"
-    # execute redshift and adjust brightness
+    # Execute redshift and adjust brightness
     [[ "$NOCOLOR" = "true" ]] &&
-    redshift -l $COORDINATES -b $b -o -O $DAYTEMP -P
+    redshift -l "$COORDINATES" -b $b -o -O $DAYTEMP -P
     [[ "$NOCOLOR" = "false" ]] &&
-    redshift -l $COORDINATES -b $b -o -P; }
+    redshift -l "$COORDINATES" -b $b -o -P; }
 
 function redshift_start {
     echo 10 > "$CONF"
-    redshift -l $COORDINATES &
+    redshift -l "$COORDINATES" &
     disown; }
 
 function redshift_force {
     b="$BRIGHTNESS"
-    # read brightness value from cache
+    # Read brightness value from cache
     [ -f "$CONF" ] && b="$(cat $CONF)"
-    # set min/max brightness value
+    # Set min/max brightness value
     [[ $(( "$b" > "10" )) = 1 ]] && b='10'
     [[ $(( "$b" < "1" )) = 1 ]] && b='1'
-    # check value and convert to input format
+    # Check value and convert to input format
     [[ $(( "$b" > "9" )) = 1 ]] && b="1.0" || b="0.${b:0:1}"
-    # execute redshift and adjust color & brightness
-    redshift -l $COORDINATES -b $b -o -O $FORCETEMP -P; }
+    # Execute redshift and adjust color & brightness
+    redshift -l "$COORDINATES" -b $b -o -O $FORCETEMP -P; }
 
 function redshift_pause {
     pkill -USR1 '^redshift$'; }
 
 function redshift_reset {
-    redshift -l $COORDINATES -o -x -P
+    redshift -o -x -P
     echo 10 > "$CONF"; }
 
-function redshift_kill {
-    pnames="$(ps aux | grep redshift | grep -v grep | grep -v redshift-control | awk '{print $13}')"
-    pids="$(ps aux | grep redshift | grep -v grep | grep -v redshift-control | awk '{print $2}')"
-    [[ "$pids" != "" ]] && kill -9 $pids; }
-
-# execute
+# Execute
 
 case "$ARG" in
 
@@ -122,7 +120,6 @@ case "$ARG" in
 
     force)
         [[ $RUNNING = true ]] &&
-        redshift_kill
         redshift_force
         ;;
 
@@ -134,22 +131,19 @@ case "$ARG" in
         ;;
 
     stop|reset)
-        redshift_kill
         redshift_reset
         ;;
 
     up|brightnessup)
-        redshift_kill
         brightness_up
         ;;
 
     down|brightnessdown)
-        redshift_kill
         brightness_down
         ;;
 
-    help|*) # default
+    help|*) # Default
         help
         ;;
 
-esac # finishes
+esac # Finishes
